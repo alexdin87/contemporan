@@ -1,0 +1,19 @@
+# Bytecode
+*.pyc
+__pycache__/
+
+# Virtualenv
+venv/
+.env
+
+# Django files
+db.sqlite3
+/media/
+
+# VS Code and OS junk
+.vscode/
+.DS_Store
+
+# Python packaging
+*.egg-info/
+

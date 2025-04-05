@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: contemporan
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn contemporan_website.wsgi
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: contemporan_website.settings
+      - key: PYTHON_VERSION
+        value: 3.11
+

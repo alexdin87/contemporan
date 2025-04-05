@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Welcome to Contemporan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden; /* 🚫 no scroll */
+        font-family: Arial, sans-serif;
+        background-color: #f8f8f8;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    h1 {
+        font-size: 2rem;
+        margin-bottom: 20px;
+    }
+
+    .video-wrapper {
+        width: 100%;
+        max-width: 500px;
+        aspect-ratio: 16 / 9;
+        margin: 0 auto 30px;
+        overflow: hidden;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 10px;
+    }
+
+    .enter-button {
+        padding: 12px 30px;
+        font-size: 1.2rem;
+        background-color: #0077cc;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    @media (max-width: 480px) {
+        h1 {
+            font-size: 1.5rem;
+        }
+
+        .enter-button {
+            font-size: 1rem;
+            padding: 10px 20px;
+        }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Welcome to Contemporan</h1>
+
+  <div class="video-wrapper">
+      <video id="introVideo" controls>
+          <source src="/media/intro.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+      </video>
+  </div>
+
+  <a class="enter-button" href="{% url 'gallery' %}">
+      Enter Gallery
+  </a>
+
+  <script>
+    const video = document.getElementById("introVideo");
+    video.addEventListener("ended", function() {
+        window.location.href = "{% url 'gallery' %}";
+    });
+  </script>
+
+</body>
+</html>
+
