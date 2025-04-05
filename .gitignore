@@ -8,7 +8,6 @@ venv/
 
 # Django files
 db.sqlite3
-/media/
 
 # VS Code and OS junk
 .vscode/
