@@ -1,59 +1,48 @@
 import os
 import csv
-import shutil
 from django.core.management.base import BaseCommand
-from django.core.files import File
 from django.conf import settings
 from gallery.models import Painting
 
 class Command(BaseCommand):
-    help = "Load paintings from static input"
+    help = "Delete all paintings and load from CSV without duplicating image files"
 
-    def handle(self, *args, **options):
-        csv_path = os.path.join(settings.BASE_DIR, 'static', 'paintings.csv')
-        image_folder = os.path.join(settings.MEDIA_ROOT, 'paintings')
+    def handle(self, *args, **kwargs):
+        csv_path = os.path.join(settings.BASE_DIR, "static", "paintings.csv")
+        images_dir = os.path.join(settings.MEDIA_ROOT, "paintings")
 
-        with open(csv_path, newline='', encoding='utf-8') as csvfile:
+        # Step 1: Delete all existing records
+        Painting.objects.all().delete()
+        self.stdout.write(self.style.WARNING("🧹 Deleted all existing paintings."))
+
+        if not os.path.exists(csv_path):
+            self.stdout.write(self.style.ERROR("❌ CSV file not found."))
+            return
+
+        with open(csv_path, newline='', encoding="utf-8") as csvfile:
             reader = csv.DictReader(csvfile)
+
             for row in reader:
-                title = row['title']
-                filename = row['filename']
-                image_name = os.path.basename(filename)
-
-                painting, created = Painting.objects.get_or_create(
-                    title=title,
-                    defaults={
-                        'author': row['author'],
-                        'description': row['description'],
-                        'year': row['year'] if row['year'].isdigit() else None,
-                        'size': row['size'],
-                    }
-                )
-
-                full_target = os.path.join(settings.MEDIA_ROOT, 'paintings', image_name)
-                image_path = os.path.join(image_folder, image_name)
-                temp_copy = os.path.join(settings.MEDIA_ROOT, 'paintings', 'placeholder.jpeg')
+                filename = row["filename"]
+                image_path = os.path.join(images_dir, filename)
 
                 if not os.path.exists(image_path):
-                    self.stdout.write(self.style.WARNING(f"Image not found: {image_name}"))
+                    self.stdout.write(self.style.WARNING(f"❌ Image not found: {filename}"))
                     continue
 
-                # Backup original file before deletion
-                shutil.copyfile(image_path, temp_copy)
+                painting = Painting(
+                    title=row["title"] or "Untitled",
+                    description=row["description"],
+                    year=row["year"] or None,
+                    author=row["author"],
+                    size=row["size"],
+                )
 
-                # Always overwrite target
-                if os.path.exists(full_target):
-                    os.remove(full_target)
+                # ✅ Just link to the file — no saving, no suffix
+                painting.image.name = f"paintings/{filename}"
+                painting.save()
 
-                with open(temp_copy, 'rb') as img_file:
-                    painting.image.save(image_name, File(img_file), save=True)
+                self.stdout.write(self.style.SUCCESS(f"✅ Linked: {painting.title}"))
 
-                msg = f"Created: {title}" if created else f"Updated image for: {title}"
-                self.stdout.write(self.style.SUCCESS(f"✅ {msg}"))
-
-        # Optional: remove placeholder after loop
-        if os.path.exists(temp_copy):
-            os.remove(temp_copy)
-
-        self.stdout.write(self.style.SUCCESS("🎉 Finished loading paintings."))
+        self.stdout.write(self.style.SUCCESS("🎉 Done loading paintings."))
 
