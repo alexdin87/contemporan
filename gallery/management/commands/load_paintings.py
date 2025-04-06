@@ -11,7 +11,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         csv_path = os.path.join(settings.BASE_DIR, 'static', 'paintings.csv')
-        image_folder = os.path.join(settings.BASE_DIR, 'static', 'paintings')
+        image_folder = os.path.join(settings.MEDIA_ROOT, 'paintings')
 
         with open(csv_path, newline='', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
