@@ -1,5 +1,5 @@
-import csv
 import os
+import csv
 import shutil
 from django.core.management.base import BaseCommand
 from django.core.files import File
@@ -7,71 +7,53 @@ from django.conf import settings
 from gallery.models import Painting
 
 class Command(BaseCommand):
-    help = 'Add or update paintings from CSV without duplicating or suffixing image filenames.'
+    help = "Load paintings from static input"
 
-    def handle(self, *args, **kwargs):
-        csv_path = os.path.join(settings.BASE_DIR, 'paintings.csv')
-        image_folder = os.path.join(settings.MEDIA_ROOT, 'paintings')
-
-        if not os.path.exists(csv_path):
-            self.stdout.write(self.style.ERROR("❌ paintings.csv not found"))
-            return
+    def handle(self, *args, **options):
+        csv_path = os.path.join(settings.BASE_DIR, 'static', 'paintings.csv')
+        image_folder = os.path.join(settings.BASE_DIR, 'static', 'paintings')
 
         with open(csv_path, newline='', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
-
             for row in reader:
                 title = row['title']
-                image_name = row['filename']
+                filename = row['filename']
+                image_name = os.path.basename(filename)
+
+                painting, created = Painting.objects.get_or_create(
+                    title=title,
+                    defaults={
+                        'author': row['author'],
+                        'description': row['description'],
+                        'year': row['year'] if row['year'].isdigit() else None,
+                        'size': row['size'],
+                    }
+                )
+
+                full_target = os.path.join(settings.MEDIA_ROOT, 'paintings', image_name)
                 image_path = os.path.join(image_folder, image_name)
-                temp_copy = os.path.join(image_folder, 'placeholder.jpeg')
+                temp_copy = os.path.join(settings.MEDIA_ROOT, 'paintings', 'placeholder.jpeg')
 
                 if not os.path.exists(image_path):
-                    self.stdout.write(self.style.WARNING(f"⚠️ Image not found: {image_name}"))
+                    self.stdout.write(self.style.WARNING(f"Image not found: {image_name}"))
                     continue
 
-                painting = Painting.objects.filter(title=title).first()
+                # Backup original file before deletion
+                shutil.copyfile(image_path, temp_copy)
 
-                if painting:
-                    # Step 1: Copy the original to a safe placeholder
-                    shutil.copyfile(image_path, temp_copy)
+                # Always overwrite target
+                if os.path.exists(full_target):
+                    os.remove(full_target)
 
-                    # Step 2: Remove existing image file to avoid suffix
-                    full_target = os.path.join(settings.MEDIA_ROOT, 'paintings', image_name)
-                    if os.path.exists(full_target):
-                        os.remove(full_target)
+                with open(temp_copy, 'rb') as img_file:
+                    painting.image.save(image_name, File(img_file), save=True)
 
-                    # Step 3: Save image from the placeholder file
-                    with open(temp_copy, 'rb') as img_file:
-                        painting.image.save(image_name, File(img_file), save=True)
+                msg = f"Created: {title}" if created else f"Updated image for: {title}"
+                self.stdout.write(self.style.SUCCESS(f"✅ {msg}"))
 
-                    self.stdout.write(self.style.SUCCESS(f"✅ Overwrote image for existing painting: {title}"))
-                else:
-                    # New painting
-                    painting = Painting(
-                        title=title,
-                        description=row['description'],
-                        year=row['year'] or None,
-                        author=row['author'],
-                        size=row['size'],
-                    )
+        # Optional: remove placeholder after loop
+        if os.path.exists(temp_copy):
+            os.remove(temp_copy)
 
-                    # Ensure clean overwrite if image file already exists
-                    full_target = os.path.join(settings.MEDIA_ROOT, 'paintings', image_name)
-                    if os.path.exists(full_target):
-                        os.remove(full_target)
-
-                    # Step 1: Copy to temp
-                    shutil.copyfile(image_path, temp_copy)
-
-                    # Step 2: Save image
-                    with open(temp_copy, 'rb') as img_file:
-                        painting.image.save(image_name, File(img_file), save=False)
-
-                    painting.save()
-                    self.stdout.write(self.style.SUCCESS(f"🆕 Created new painting: {title}"))
-
-                # Step 4: Delete the placeholder
-                if os.path.exists(temp_copy):
-                    os.remove(temp_copy)
+        self.stdout.write(self.style.SUCCESS("🎉 Finished loading paintings."))
 
